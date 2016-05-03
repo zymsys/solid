@@ -82,6 +82,7 @@ $cartItems = $statement->fetchAll();
     <?php if (count($cartItems) > 0): ?>
         <?php
         $total = 0;
+        $taxable = 0;
 
         $provinceCode = isset($_GET['province']) ? $_GET['province'] : 'ON'; //Default to GTA-PHP's home
         $provinces = [];
@@ -113,7 +114,9 @@ $cartItems = $statement->fetchAll();
                     <td>
                         <?php
                         echo number_format($cartItem['quantity'] * $product['price'] / 100, 2);
-                        $total += $cartItem['quantity'] * $product['price'];
+                        $itemTotal = $cartItem['quantity'] * $product['price'];
+                        $total += $itemTotal;
+                        $taxable += $product['taxes'] ? $itemTotal : 0;
                         ?>
                     </td>
                 </tr>
@@ -130,7 +133,7 @@ $cartItems = $statement->fetchAll();
                     <?php echo $province['taxrate'] ?>%:</td>
                 <td>
                     <?php
-                    $taxes = $total * $province['taxrate'] / 100;
+                    $taxes = $taxable * $province['taxrate'] / 100;
                     $total += $taxes;
                     echo number_format($total / 100, 2);
                     ?>
