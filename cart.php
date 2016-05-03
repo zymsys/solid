@@ -135,7 +135,7 @@ $cartItems = $statement->fetchAll();
                     <?php
                     $taxes = $taxable * $province['taxrate'] / 100;
                     $total += $taxes;
-                    echo number_format($total / 100, 2);
+                    echo number_format($taxes / 100, 2);
                     ?>
                 </td>
             </tr>
