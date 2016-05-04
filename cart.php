@@ -7,8 +7,9 @@ if (!isset($_SESSION['cart'])) {
 }
 
 if (isset($_POST['addproduct'])) {
-    $sql = "INSERT INTO cartitem (cart, product, quantity) VALUES (:cart, :product, :quantity)
-              ON DUPLICATE KEY UPDATE quantity = quantity + :quantity";
+    $sql = "INSERT INTO cartitem (cart, product, quantity) 
+            VALUES (:cart, :product, :quantity)
+            ON DUPLICATE KEY UPDATE quantity = quantity + :quantity";
     $parameters = [
         'cart' => $_SESSION['cart'],
         'product' => $_POST['addproduct'],
@@ -19,7 +20,8 @@ if (isset($_POST['addproduct'])) {
 }
 
 if (isset($_POST['update'])) {
-    $sql = "UPDATE cartitem SET quantity=:quantity WHERE cart=:cart and product=:product";
+    $sql = "UPDATE cartitem SET quantity=:quantity 
+            WHERE cart=:cart and product=:product";
     $parameters = [
         'cart' => $_SESSION['cart'],
         'product' => $_POST['update'],
@@ -29,7 +31,8 @@ if (isset($_POST['update'])) {
     $statement->execute($parameters);
 }
 
-$statement = $connection->prepare("SELECT * FROM cartitem WHERE cart=:cart AND quantity <> 0");
+$statement = $connection->prepare("SELECT * FROM cartitem 
+  WHERE cart=:cart AND quantity <> 0");
 $statement->execute(['cart' => $_SESSION['cart']]);
 $cartItems = $statement->fetchAll();
 ?>
@@ -38,15 +41,13 @@ $cartItems = $statement->fetchAll();
 <head>
     <meta charset="UTF-8">
     <title>GTA-PHP Gift Shop</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
-          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
-          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <link rel="stylesheet" href="site.css">
 </head>
 <body>
 <div class="container">
     <h1>GTA-PHP Gift Shop</h1>
-    <p>Buy our junk to keep our organizers up to date with the latest gadgets.</p>
+    <p>Buy our junk to keep our organizers up to date
+        with the latest gadgets.</p>
     <table class="table">
         <tr>
             <th>Product Name</th>
@@ -66,12 +67,21 @@ $cartItems = $statement->fetchAll();
                     $price = $product['price'];
                     echo number_format($price / 100, 2);
                     ?></td>
-                <td><?php echo number_format(($product['price'] - $product['cost']) / 100, 2); ?></td>
+                <td>
+                    <?php
+                    echo number_format(
+                        ($product['price'] - $product['cost']) / 100, 2
+                    );
+                    ?>
+                </td>
                 <td>
                     <form method="post">
-                        <input type="number" name="quantity" value="1" style="width: 3em">
-                        <input type="hidden" name="addproduct" value="<?php echo $product['id']; ?>">
-                        <input class="btn btn-default btn-xs" type="submit" value="Add to Cart">
+                        <input type="number" name="quantity"
+                               value="1" style="width: 3em">
+                        <input type="hidden" name="addproduct"
+                               value="<?php echo $product['id']; ?>">
+                        <input class="btn btn-default btn-xs"
+                               type="submit" value="Add to Cart">
                     </form>
                 </td>
             </tr>
@@ -84,9 +94,11 @@ $cartItems = $statement->fetchAll();
         $total = 0;
         $taxable = 0;
 
-        $provinceCode = isset($_GET['province']) ? $_GET['province'] : 'ON'; //Default to GTA-PHP's home
+        $provinceCode = isset($_GET['province']) ?
+            $_GET['province'] : 'ON'; //Default to GTA-PHP's home
         $provinces = [];
-        $result = $connection->query("SELECT * FROM province ORDER BY name");
+        $result = $connection->query("SELECT * FROM province 
+            ORDER BY name");
         foreach ($result as $row) {
             $provinces[$row['code']] = $row;
             if ($row['code'] === $provinceCode) {
@@ -105,7 +117,8 @@ $cartItems = $statement->fetchAll();
                     <td>
                         <form method="post">
                             Quantity:
-                            <input type="hidden" name="update" value="<?php echo $product['id']; ?>">
+                            <input type="hidden" name="update"
+                                   value="<?php echo $product['id']; ?>">
                             <input type="number" name="quantity" style="width: 3em"
                                    value="<?php echo $cartItem['quantity']; ?>">
                             <button type="submit">Update</button>
@@ -113,7 +126,9 @@ $cartItems = $statement->fetchAll();
                     </td>
                     <td>
                         <?php
-                        echo number_format($cartItem['quantity'] * $product['price'] / 100, 2);
+                        echo number_format(
+                            $cartItem['quantity'] * $product['price'] / 100, 2
+                        );
                         $itemTotal = $cartItem['quantity'] * $product['price'];
                         $total += $itemTotal;
                         $taxable += $product['taxes'] ? $itemTotal : 0;
@@ -152,12 +167,14 @@ $cartItems = $statement->fetchAll();
                     <?php
                     $selected = $provinceCode === $province['code'] ? 'selected' : '';
                     ?>
-                    <option value="<?php echo $province['code']; ?>" <?php echo $selected; ?>>
+                    <option value="<?php echo $province['code']; ?>"
+                        <?php echo $selected; ?>>
                         <?php echo $province['name']; ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <button type="submit" class="btn btn-default btn-xs">Recalculate</button>
+            <button type="submit" class="btn btn-default btn-xs">
+                Recalculate</button>
         </form>
         <form action="checkout.php" method="post">
             <?php foreach ($cartItems as $itemNumber => $cartItem): ?>
@@ -165,11 +182,14 @@ $cartItems = $statement->fetchAll();
                 $product = $products[$cartItem['product']];
                 ?>
                 <input type="hidden" name="item<?php echo $itemNumber; ?>"
-                       value="<?php echo $product['name'] . '|' . number_format($product['price'] / 100, 2); ?>">
+                       value="<?php echo $product['name'] . '|' .
+                           number_format($product['price'] / 100, 2); ?>">
             <?php endforeach; ?>
             <input type="hidden" name="item<?php echo count($cartItems); ?>"
                    value="<?php echo 'Tax|' . number_format($taxes / 100, 2); ?>">
-            <button type="submit" class="btn btn-primary" style="float: right">Checkout</button>
+            <button type="submit" class="btn btn-primary" style="float: right">
+                Checkout
+            </button>
         </form>
     <?php endif; ?>
 </div>
