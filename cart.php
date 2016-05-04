@@ -1,141 +1,151 @@
 <?php
-function initialize()
+class Initializer
 {
-    global $connection;
+    private $connection;
 
-    session_start();
-    $connection = new \PDO('mysql:host=localhost;dbname=solid', 'root', '');
-    if (!isset($_SESSION['cart'])) {
-        $connection->exec("INSERT INTO cart () VALUES ()");
-        $_SESSION['cart'] = $connection->lastInsertId();
+    public function __construct(\PDO $connection)
+    {
+        $this->connection = $connection;
     }
-}
 
-function handleAdd()
-{
-    global $connection;
-
-    if (!isset($_POST['addproduct'])) {
-        return;
+    public function initialize()
+    {
+        session_start();
+        if (!isset($_SESSION['cart'])) {
+            $this->connection->exec("INSERT INTO cart () VALUES ()");
+            $_SESSION['cart'] = $this->connection->lastInsertId();
+        }
+        $this->handleAdd();
+        $this->handleUpdate();
     }
-    $sql = "INSERT INTO cartitem (cart, product, quantity) 
+
+    private function handleAdd()
+    {
+        if (!isset($_POST['addproduct'])) {
+            return;
+        }
+        $sql = "INSERT INTO cartitem (cart, product, quantity) 
           VALUES (:cart, :product, :quantity)
           ON DUPLICATE KEY UPDATE quantity = quantity + :quantity";
-    $parameters = [
-        'cart' => $_SESSION['cart'],
-        'product' => $_POST['addproduct'],
-        'quantity' => $_POST['quantity'],
-    ];
-    $statement = $connection->prepare($sql);
-    $statement->execute($parameters);
-}
-
-function handleUpdate()
-{
-    global $connection;
-
-    if (!isset($_POST['update'])) {
-        return;
-    }
-    $sql = "UPDATE cartitem SET quantity=:quantity 
-      WHERE cart=:cart and product=:product";
-    $parameters = [
-        'cart' => $_SESSION['cart'],
-        'product' => $_POST['update'],
-        'quantity' => $_POST['quantity'],
-    ];
-    $statement = $connection->prepare($sql);
-    $statement->execute($parameters);
-}
-
-function loadCartItems()
-{
-    global $connection, $viewData;
-
-    $viewData = [];
-    $statement = $connection->prepare("SELECT * FROM cartitem 
-      WHERE cart=:cart AND quantity <> 0");
-    $statement->execute(['cart' => $_SESSION['cart']]);
-    return $statement->fetchAll();
-}
-
-function loadProducts()
-{
-    global $connection;
-
-    $products = [];
-    $result = $connection->query("SELECT * FROM product");
-    foreach ($result as $product) {
-        $products[$product['id']] = $product;
-    }
-    return $products;
-}
-
-function loadProvinces()
-{
-    global $connection;
-
-    $provinces = [];
-    $result = $connection->query("SELECT * FROM province ORDER BY name");
-    foreach ($result as $row) {
-        $provinces[$row['code']] = $row;
-    }
-    return $provinces;
-}
-
-function calculateCartSubtotal($cartItems, $products)
-{
-    $subtotal = 0;
-
-    foreach ($cartItems as $cartItem) {
-        $product = $products[$cartItem['product']];
-        $subtotal += $cartItem['quantity'] * $product['price'];
+        $parameters = [
+            'cart' => $_SESSION['cart'],
+            'product' => $_POST['addproduct'],
+            'quantity' => $_POST['quantity'],
+        ];
+        $statement = $this->connection->prepare($sql);
+        $statement->execute($parameters);
     }
 
-    return $subtotal;
-}
-
-function calculateCartTaxes($cartItems, $products, $taxrate)
-{
-    $taxable = 0;
-
-    foreach ($cartItems as $cartItem) {
-        $product = $products[$cartItem['product']];
-        $taxable += $product['taxes'] ?
-            $cartItem['quantity'] * $product['price'] : 0;
-    }
-    return $taxable * $taxrate / 100;
-}
-
-function buildViewData()
-{
-    $viewData =  [
-        'cartItems' => loadCartItems(),
-        'products' => loadProducts(),
-        'provinces' => loadProvinces(),
-        'provinceCode' => isset($_GET['province']) ?
-            $_GET['province'] : 'ON', //Default to GTA-PHP's home
-    ];
-
-    foreach ($viewData['provinces'] as $province) {
-        if ($province['code'] === $viewData['provinceCode']) {
-            $viewData['province'] = $province;
+    private function handleUpdate()
+    {
+        if (!isset($_POST['update'])) {
+            return;
         }
+        $sql = "UPDATE cartitem SET quantity=:quantity 
+          WHERE cart=:cart and product=:product";
+        $parameters = [
+            'cart' => $_SESSION['cart'],
+            'product' => $_POST['update'],
+            'quantity' => $_POST['quantity'],
+        ];
+        $statement = $this->connection->prepare($sql);
+        $statement->execute($parameters);
+    }
+}
+
+class View {
+    private $connection;
+
+    public function __construct(\PDO $connection)
+    {
+        $this->connection = $connection;
     }
 
-    $viewData['subtotal'] = calculateCartSubtotal($viewData['cartItems'],
-        $viewData['products']);
-    $viewData['taxes'] = calculateCartTaxes($viewData['cartItems'],
-        $viewData['products'], $viewData['province']['taxrate']);
-    $viewData['total'] = $viewData['subtotal'] + $viewData['taxes'];
+    private function loadCartItems()
+    {
+        $statement = $this->connection->prepare("SELECT * FROM cartitem 
+      WHERE cart=:cart AND quantity <> 0");
+        $statement->execute(['cart' => $_SESSION['cart']]);
+        return $statement->fetchAll();
+    }
 
-    return $viewData;
+    private function loadProducts()
+    {
+        $products = [];
+        $result = $this->connection->query("SELECT * FROM product");
+        foreach ($result as $product) {
+            $products[$product['id']] = $product;
+        }
+        return $products;
+    }
+
+    private function loadProvinces()
+    {
+        $provinces = [];
+        $result = $this->connection->query("SELECT * FROM province ORDER BY name");
+        foreach ($result as $row) {
+            $provinces[$row['code']] = $row;
+        }
+        return $provinces;
+    }
+
+    private function calculateCartSubtotal($cartItems, $products)
+    {
+        $subtotal = 0;
+
+        foreach ($cartItems as $cartItem) {
+            $product = $products[$cartItem['product']];
+            $subtotal += $cartItem['quantity'] * $product['price'];
+        }
+
+        return $subtotal;
+    }
+
+    private function calculateCartTaxes($cartItems, $products, $taxrate)
+    {
+        $taxable = 0;
+
+        foreach ($cartItems as $cartItem) {
+            $product = $products[$cartItem['product']];
+            $taxable += $product['taxes'] ?
+                $cartItem['quantity'] * $product['price'] : 0;
+        }
+        return $taxable * $taxrate / 100;
+    }
+
+    public function buildViewData()
+    {
+        $viewData =  [
+            'cartItems' => $this->loadCartItems(),
+            'products' => $this->loadProducts(),
+            'provinces' => $this->loadProvinces(),
+            'provinceCode' => isset($_GET['province']) ?
+                $_GET['province'] : 'ON', //Default to GTA-PHP's home
+        ];
+
+        foreach ($viewData['provinces'] as $province) {
+            if ($province['code'] === $viewData['provinceCode']) {
+                $viewData['province'] = $province;
+            }
+        }
+
+        $viewData['subtotal'] = $this->calculateCartSubtotal($viewData['cartItems'],
+            $viewData['products']);
+        $viewData['taxes'] = $this->calculateCartTaxes($viewData['cartItems'],
+            $viewData['products'], $viewData['province']['taxrate']);
+        $viewData['total'] = $viewData['subtotal'] + $viewData['taxes'];
+
+        return $viewData;
+    }
 }
-initialize();
-handleAdd();
-handleUpdate();
 
-$viewData = buildViewData();
+$connection = new \PDO('mysql:host=localhost;dbname=solid', 'root', '');
+
+$initializer = new Initializer($connection);
+$initializer->initialize();
+
+$view = new View($connection);
+$viewData = $view->buildViewData();
 ?>
 <!doctype html>
 <html lang="en">
