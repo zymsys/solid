@@ -68,7 +68,7 @@ $cartItems = $statement->fetchAll();
                     ?></td>
                 <td><?php echo number_format(($product['price'] - $product['cost']) / 100, 2); ?></td>
                 <td>
-                    <form action="cart.php" method="post">
+                    <form method="post">
                         <input type="number" name="quantity" value="1" style="width: 3em">
                         <input type="hidden" name="addproduct" value="<?php echo $product['id']; ?>">
                         <input class="btn btn-default btn-xs" type="submit" value="Add to Cart">
@@ -103,7 +103,7 @@ $cartItems = $statement->fetchAll();
                         <?php echo $product['name']; ?>
                     </td>
                     <td>
-                        <form action="cart.php" method="post">
+                        <form method="post">
                             Quantity:
                             <input type="hidden" name="update" value="<?php echo $product['id']; ?>">
                             <input type="number" name="quantity" style="width: 3em"
@@ -145,7 +145,7 @@ $cartItems = $statement->fetchAll();
                 <td><?php echo number_format($total / 100, 2); ?></td>
             </tr>
         </table>
-        <form action="cart.php" method="get">
+        <form method="get">
             Calculate taxes for purchase from:
             <select name="province">
                 <?php foreach ($provinces as $province): ?>
