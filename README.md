@@ -1,4 +1,4 @@
 Zero to SOLID in 45 Minutes
 ===========================
 
-See [index.html](index.html) for an introduction to this code.
+See [index.html](http://zymsys.github.io/solid/) for an introduction to this code.
