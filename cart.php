@@ -15,7 +15,7 @@ class Application
     {
         session_start();
         if (!isset($_SESSION['cart'])) {
-            $this->connection->exec("INSERT INTO cart () VALUES ()");
+            $this->connection->exec("INSERT INTO cart VALUES ()");
             $_SESSION['cart'] = $this->connection->lastInsertId();
         }
         $this->handlePost();
