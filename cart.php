@@ -53,7 +53,7 @@ class Initializer
     }
 }
 
-class View {
+class ViewData {
     private $connection;
 
     public function __construct(\PDO $connection)
@@ -144,7 +144,7 @@ $connection = new \PDO('mysql:host=localhost;dbname=solid', 'root', '');
 $initializer = new Initializer($connection);
 $initializer->initialize();
 
-$view = new View($connection);
+$view = new ViewData($connection);
 $viewData = $view->buildViewData();
 ?>
 <!doctype html>
