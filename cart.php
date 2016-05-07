@@ -37,9 +37,10 @@ class Application
             }
         }
 
-        $viewData['subtotal'] = $this->accounting->calculateCartSubtotal($viewData['cartItems'],
-            $viewData['products']);
-        $viewData['taxes'] = $this->accounting->calculateCartTaxes($viewData['cartItems'],
+        $viewData['subtotal'] = $this->accounting->
+            calculateCartSubtotal($viewData['cartItems'], $viewData['products']);
+        $viewData['taxes'] = $this->accounting->
+            calculateCartTaxes($viewData['cartItems'],
             $viewData['products'], $viewData['province']['taxrate']);
         $viewData['total'] = $viewData['subtotal'] + $viewData['taxes'];
 
