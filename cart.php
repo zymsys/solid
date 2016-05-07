@@ -2,7 +2,7 @@
 session_start();
 $connection = new \PDO('mysql:host=localhost;dbname=solid', 'root', '');
 if (!isset($_SESSION['cart'])) {
-    $connection->exec("INSERT INTO cart () VALUES ()");
+    $connection->exec("INSERT INTO cart VALUES ()");
     $_SESSION['cart'] = $connection->lastInsertId();
 }
 
