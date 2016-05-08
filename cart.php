@@ -27,8 +27,8 @@ class Application
         $this->handlePost();
 
         $this->products = $this->inventory->loadProducts();
-        $provinceRepository = new ProvinceRepository($this->connection, isset($_GET['province']) ?
-            $_GET['province'] : 'ON');
+        $provinceRepository = new ProvinceRepository($this->connection,
+            isset($_GET['province']) ? $_GET['province'] : 'ON');
         $this->provinces = $provinceRepository->loadProvinces();
         $this->selectedProvince = $provinceRepository->getSelectedProvince();
         $this->accounting->addStrategy(
