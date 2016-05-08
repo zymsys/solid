@@ -181,27 +181,6 @@ class ProvinceRepository
     }
 }
 
-class AccountingAdjustment {
-    private $description;
-    private $amount;
-
-    public function __construct($description, $amount)
-    {
-        $this->description = $description;
-        $this->amount = $amount;
-    }
-
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    public function getAmount()
-    {
-        return $this->amount;
-    }
-}
-
 class AccountingStrategy {
     private $description;
 
