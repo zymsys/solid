@@ -34,6 +34,9 @@ class Application
         $this->accounting->addStrategy(
             new TaxAccountingStrategy($this->products, $provinceRepository->getSelectedProvince())
         );
+        $this->accounting->addStrategy(
+            new DiscountAccountingStrategy($this->products)
+        );
     }
 
     public function buildViewData()
@@ -204,11 +207,11 @@ class TaxAccountingStrategy extends AccountingStrategy {
     private $products;
     private $taxRate;
 
-    public function __construct($productRepository, $province)
+    public function __construct($products, $province)
     {
         parent::__construct($province['name'] . ' taxes at ' .
             $province['taxrate'] . '%:');
-        $this->products = $productRepository;
+        $this->products = $products;
         $this->taxRate = $province['taxrate'];
     }
 
@@ -222,6 +225,25 @@ class TaxAccountingStrategy extends AccountingStrategy {
                 $cartItem['quantity'] * $product['price'] : 0;
         }
         return $taxable * $this->taxRate / 100;
+    }
+}
+
+class DiscountAccountingStrategy extends AccountingStrategy {
+    private $products;
+
+    public function __construct($products)
+    {
+        parent::__construct("Discount for orders over $100");
+        $this->products = $products;
+    }
+
+    public function getAdjustment($cartItems)
+    {
+        $total = array_reduce($cartItems, function ($carry, $item) {
+            $product = $this->products[$item['product']];
+            return $carry + $item['quantity'] * $product['price'];
+        }, 0);
+        return $total > 10000 ? ($total / -10) : false;
     }
 }
 
