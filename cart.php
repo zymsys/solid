@@ -267,7 +267,7 @@ class Accounting {
         return $subtotal;
     }
 
-    public function addStrategy($strategy)
+    public function addStrategy(AccountingStrategy $strategy)
     {
         $this->strategies[] = $strategy;
     }
