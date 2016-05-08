@@ -41,7 +41,7 @@ class Application
         $cartItems = $this->sales->loadCartItems();
         $viewData =  [
             'cartItems' => $cartItems,
-            'products' => $this->inventory->loadProducts(),
+            'products' => $this->products,
             'provinces' => $this->provinces,
             'adjustments' => $this->accounting->applyAdjustments($cartItems),
             'provinceCode' => $this->selectedProvince['code'],
@@ -55,7 +55,8 @@ class Application
 
         $viewData['subtotal'] = $this->accounting->
             calculateCartSubtotal($viewData['cartItems'], $viewData['products']);
-        $viewData['total'] = $viewData['subtotal'] + $this->accounting->getAppliedAdjustmentsTotal();
+        $viewData['total'] = $viewData['subtotal'] +
+            $this->accounting->getAppliedAdjustmentsTotal();
 
         return $viewData;
     }
