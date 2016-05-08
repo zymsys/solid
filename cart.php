@@ -402,7 +402,9 @@ $viewData = $app->buildViewData();
                        ?>">
             <?php endforeach; ?>
             <?php
-            for ($adjustmentIndex = 0; $adjustmentIndex < count($viewData['adjustments']); $adjustmentIndex += 1):
+            for ($adjustmentIndex = 0;
+                 $adjustmentIndex < count($viewData['adjustments']);
+                 $adjustmentIndex += 1):
                 $adjustment = $viewData['adjustments'][$adjustmentIndex];
             ?>
             <input type="hidden"
