@@ -2,6 +2,9 @@
 class Application
 {
     private $connection;
+    private $inventory;
+    private $sales;
+    private $accounting;
 
     public function __construct()
     {
