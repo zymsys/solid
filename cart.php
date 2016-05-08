@@ -5,6 +5,9 @@ class Application
     private $inventory;
     private $sales;
     private $accounting;
+    private $products;
+    private $provinces;
+    private $selectedProvince;
 
     public function __construct()
     {
@@ -22,16 +25,26 @@ class Application
             $_SESSION['cart'] = $this->connection->lastInsertId();
         }
         $this->handlePost();
+
+        $this->products = $this->inventory->loadProducts();
+        $provinceRepository = new ProvinceRepository($this->connection, isset($_GET['province']) ?
+            $_GET['province'] : 'ON');
+        $this->provinces = $provinceRepository->loadProvinces();
+        $this->selectedProvince = $provinceRepository->getSelectedProvince();
+        $this->accounting->addStrategy(
+            new TaxAccountingStrategy($this->products, $provinceRepository->getSelectedProvince())
+        );
     }
 
     public function buildViewData()
     {
+        $cartItems = $this->sales->loadCartItems();
         $viewData =  [
-            'cartItems' => $this->sales->loadCartItems(),
+            'cartItems' => $cartItems,
             'products' => $this->inventory->loadProducts(),
-            'provinces' => $this->accounting->loadProvinces(),
-            'provinceCode' => isset($_GET['province']) ?
-                $_GET['province'] : 'ON', //Default to GTA-PHP's home
+            'provinces' => $this->provinces,
+            'adjustments' => $this->accounting->applyAdjustments($cartItems),
+            'provinceCode' => $this->selectedProvince['code'],
         ];
 
         foreach ($viewData['provinces'] as $province) {
@@ -42,10 +55,7 @@ class Application
 
         $viewData['subtotal'] = $this->accounting->
             calculateCartSubtotal($viewData['cartItems'], $viewData['products']);
-        $viewData['taxes'] = $this->accounting->
-            calculateCartTaxes($viewData['cartItems'],
-            $viewData['products'], $viewData['province']['taxrate']);
-        $viewData['total'] = $viewData['subtotal'] + $viewData['taxes'];
+        $viewData['total'] = $viewData['subtotal'] + $this->accounting->getAppliedAdjustmentsTotal();
 
         return $viewData;
     }
@@ -132,23 +142,117 @@ class Sales {
     }
 }
 
+class ProvinceRepository
+{
+    private $connection;
+    private $provinces = null;
+    private $selectedProvince;
+    private $selectedProvinceCode;
+
+    public function __construct(\PDO $connection, $selectedProvinceCode)
+    {
+        $this->connection = $connection;
+        $this->selectedProvinceCode = $selectedProvinceCode;
+    }
+
+    public function loadProvinces()
+    {
+        $this->provinces = [];
+        $result = $this->connection->query("SELECT * FROM province ORDER BY name");
+        foreach ($result as $row) {
+            $this->provinces[$row['code']] = $row;
+            if ($row['code'] === $this->selectedProvinceCode)
+            {
+                $this->selectedProvince = $row;
+            }
+        }
+        return $this->provinces;
+    }
+
+    public function getProvinces()
+    {
+        return is_null($this->provinces) ? $this->loadProvinces() : $this->provinces;
+    }
+
+    public function getSelectedProvince()
+    {
+        return $this->selectedProvince;
+    }
+}
+
+class AccountingAdjustment {
+    private $description;
+    private $amount;
+
+    public function __construct($description, $amount)
+    {
+        $this->description = $description;
+        $this->amount = $amount;
+    }
+
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    public function getAmount()
+    {
+        return $this->amount;
+    }
+}
+
+class AccountingStrategy {
+    private $description;
+
+    public function __construct($description)
+    {
+        $this->description = $description;
+    }
+
+    public function getAdjustment($cartItems)
+    {
+        return false;
+    }
+
+    public function getDescription()
+    {
+        return $this->description;
+    }
+}
+
+class TaxAccountingStrategy extends AccountingStrategy {
+    private $products;
+    private $taxRate;
+
+    public function __construct($productRepository, $province)
+    {
+        parent::__construct($province['name'] . ' taxes at ' .
+            $province['taxrate'] . '%:');
+        $this->products = $productRepository;
+        $this->taxRate = $province['taxrate'];
+    }
+
+    public function getAdjustment($cartItems)
+    {
+        $taxable = 0;
+
+        foreach ($cartItems as $cartItem) {
+            $product = $this->products[$cartItem['product']];
+            $taxable += $product['taxes'] ?
+                $cartItem['quantity'] * $product['price'] : 0;
+        }
+        return $taxable * $this->taxRate / 100;
+    }
+}
+
 class Accounting {
     private $connection;
+    private $strategies = [];
+    private $appliedAdjustments = 0;
 
     public function __construct(\PDO $connection)
     {
         $this->connection = $connection;
-    }
-
-
-    public function loadProvinces()
-    {
-        $provinces = [];
-        $result = $this->connection->query("SELECT * FROM province ORDER BY name");
-        foreach ($result as $row) {
-            $provinces[$row['code']] = $row;
-        }
-        return $provinces;
     }
 
     public function calculateCartSubtotal($cartItems, $products)
@@ -163,18 +267,31 @@ class Accounting {
         return $subtotal;
     }
 
-    public function calculateCartTaxes($cartItems, $products, $taxrate)
+    public function addStrategy($strategy)
     {
-        $taxable = 0;
-
-        foreach ($cartItems as $cartItem) {
-            $product = $products[$cartItem['product']];
-            $taxable += $product['taxes'] ?
-                $cartItem['quantity'] * $product['price'] : 0;
-        }
-        return $taxable * $taxrate / 100;
+        $this->strategies[] = $strategy;
     }
 
+    public function applyAdjustments($cartItems)
+    {
+        $adjustments = [];
+        foreach ($this->strategies as $strategy) {
+            $adjustment = $strategy->getAdjustment($cartItems);
+            if ($adjustment) {
+                $this->appliedAdjustments += $adjustment;
+                $adjustments[] = [
+                    'description' => $strategy->getDescription(),
+                    'adjustment' => $adjustment,
+                ];
+            }
+        }
+        return $adjustments;
+    }
+
+    public function getAppliedAdjustmentsTotal()
+    {
+        return $this->appliedAdjustments;
+    }
 }
 
 $app = new Application();
@@ -258,17 +375,19 @@ $viewData = $app->buildViewData();
                 <td style="text-align: right">Subtotal:</td>
                 <td><?php echo number_format($viewData['subtotal'] / 100, 2); ?></td>
             </tr>
+            <?php foreach ($viewData['adjustments'] as $adjustment): ?>
             <tr>
                 <td><!-- Name --></td>
                 <td style="text-align: right">
-                    <?php echo $viewData['province']['name']; ?> taxes at
-                    <?php echo $viewData['province']['taxrate'] ?>%:</td>
+                    <?php echo $adjustment['description']; ?>
+                </td>
                 <td>
                     <?php
-                    echo number_format($viewData['taxes'] / 100, 2);
+                    echo number_format($adjustment['adjustment'] / 100, 2);
                     ?>
                 </td>
             </tr>
+            <?php endforeach; ?>
             <tr>
                 <td><!-- Name --></td>
                 <td style="text-align: right">Total:</td>
@@ -302,10 +421,15 @@ $viewData = $app->buildViewData();
                            number_format($product['price'] / 100, 2);
                        ?>">
             <?php endforeach; ?>
+            <?php
+            for ($adjustmentIndex = 0; $adjustmentIndex < count($viewData['adjustments']); $adjustmentIndex += 1):
+                $adjustment = $viewData['adjustments'][$adjustmentIndex];
+            ?>
             <input type="hidden"
-                   name="item<?php echo count($viewData['cartItems']); ?>"
-                   value="<?php echo 'Tax|' .
-                       number_format($viewData['taxes'] / 100, 2); ?>">
+                   name="item<?php echo $adjustmentIndex; ?>"
+                   value="<?php echo $adjustment['description'] . '|' .
+                       number_format($adjustment['adjustment'] / 100, 2); ?>">
+            <?php endfor; ?>
             <button type="submit" class="btn btn-primary" style="float: right">
                 Checkout</button>
         </form>
