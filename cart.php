@@ -184,35 +184,27 @@ class ProvinceRepository
     }
 }
 
-class AccountingStrategy {
-    private $description;
+interface AccountingStrategyInterface
+{
+    public function getDescription();
+    public function getAdjustment($cartItems);
+}
 
-    public function __construct($description)
-    {
-        $this->description = $description;
-    }
+class TaxAccountingStrategy implements AccountingStrategyInterface {
+    private $products;
+    private $province;
 
-    public function getAdjustment($cartItems)
+    public function __construct($products, $province)
     {
-        return false;
+        $this->province = $province;
+        $this->products = $products;
+        $this->taxRate = $province['taxrate'];
     }
 
     public function getDescription()
     {
-        return $this->description;
-    }
-}
-
-class TaxAccountingStrategy extends AccountingStrategy {
-    private $products;
-    private $taxRate;
-
-    public function __construct($products, $province)
-    {
-        parent::__construct($province['name'] . ' taxes at ' .
-            $province['taxrate'] . '%:');
-        $this->products = $products;
-        $this->taxRate = $province['taxrate'];
+        return $this->province['name'] . ' taxes at ' .
+            $this->province['taxrate'] . '%:';
     }
 
     public function getAdjustment($cartItems)
@@ -224,17 +216,21 @@ class TaxAccountingStrategy extends AccountingStrategy {
             $taxable += $product['taxes'] ?
                 $cartItem['quantity'] * $product['price'] : 0;
         }
-        return $taxable * $this->taxRate / 100;
+        return $taxable * $this->province['taxrate'] / 100;
     }
 }
 
-class DiscountAccountingStrategy extends AccountingStrategy {
+class DiscountAccountingStrategy implements AccountingStrategyInterface {
     private $products;
 
     public function __construct($products)
     {
-        parent::__construct("Discount for orders over $100");
         $this->products = $products;
+    }
+
+    public function getDescription()
+    {
+        return "Discount for orders over $100";
     }
 
     public function getAdjustment($cartItems)
@@ -269,7 +265,7 @@ class Accounting {
         return $subtotal;
     }
 
-    public function addStrategy(AccountingStrategy $strategy)
+    public function addStrategy(AccountingStrategyInterface $strategy)
     {
         $this->strategies[] = $strategy;
     }
