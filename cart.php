@@ -102,7 +102,15 @@ class Inventory {
     }
 }
 
-class Sales {
+interface SalesInterface
+{
+    public function addProductToCart($cartId, $productId, $quantity);
+    public function modifyProductQuantityInCart($cartId, $productId, $quantity);
+    public function loadCartItems();
+}
+
+class Sales implements SalesInterface
+{
     private $connection;
 
     public function __construct(\PDO $connection)
